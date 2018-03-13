@@ -1,158 +1,204 @@
-html {
-  font-family: 'Roboto', sans-serif;
-  box-sizing: border-box;
-  font-size: 16px;
-  font-weight: normal;
-  margin: 0;
-  padding: 0; }
+$(document).ready(function() {
+  const apiRoot = 'http://localhost:8080/v1/task/';
+  const trelloApiRoot = 'http://localhost:8080/v1/trello/';
+  const datatableRowTemplate = $('[data-datatable-row-template]').children()[0];
+  const $tasksContainer = $('[data-tasks-container]');
 
-input,
-textarea {
-  width: 100%;
-  padding: 5px;
-  margin: 0;
-  border-radius: 2px;
-  border: 1px solid #ccc; }
+  var availableBoards = {};
+  var availableTasks = {};
 
-body {
-  margin: 0;
-  padding: 0; }
+  // init
 
-*,
-*::before,
-*::after {
-  box-sizing: inherit; }
+  getAllTasks();
 
-.crud {
-  margin-bottom: 20px; }
+  function getAllAvailableBoards(callback, callbackArgs) {
+    var requestUrl = trelloApiRoot + 'getTrelloBoards';
 
-.container {
-  padding-right: 15px;
-  padding-left: 15px;
-  margin-right: auto;
-  margin-left: auto; }
+    $.ajax({
+      url: requestUrl,
+      method: 'GET',
+      contentType: 'application/json',
+      success: function(boards) { callback(callbackArgs, boards); }
+    });
+  }
 
-@media (min-width: 768px) {
-  .container {
-    width: 750px; } }
+  function createElement(data) {
+    const element = $(datatableRowTemplate).clone();
 
-@media (min-width: 992px) {
-  .container {
-    width: 970px; } }
+    element.attr('data-task-id', data.id);
+    element.find('[data-task-name-section] [data-task-name-paragraph]').text(data.title);
+    element.find('[data-task-name-section] [data-task-name-input]').val(data.title);
 
-@media (min-width: 1200px) {
-  .container {
-    width: 1170px; } }
+    element.find('[data-task-content-section] [data-task-content-paragraph]').text(data.content);
+    element.find('[data-task-content-section] [data-task-content-input]').val(data.content);
 
-.kodilla-heading--main {
-  margin: 20px auto;
-  text-align: center;
-  font-size: 30px;
-  font-weight: 400; }
+    return element;
+  }
 
-.datatable__row {
-  display: flex;
-  flex-flow: row nowrap;
-  justify-content: flex-start;
-  align-items: stretch;
-  border: 1px solid #ccc;
-  border-bottom: none;
-  margin: 0; }
+  function prepareBoardOrListSelectOptions(availableChoices) {
+    return availableChoices.map(function(choice) {
+      return $('<option>')
+                .addClass('crud-select__option')
+                .val(choice.id)
+                .text(choice.name || 'Unknown name');
+    });
+  }
 
-.datatable__row-section-wrapper {
-  display: flex;
-  flex-grow: 1;
-  justify-content: space-around; }
+  function handleDatatableRender(taskData, boards) {
+    $tasksContainer.empty();
+    boards.forEach(board => {
+      availableBoards[board.id] = board;
+    });
 
-.datatable__row:first-of-type {
-  border-top-left-radius: 4px;
-  border-top-right-radius: 4px; }
+    taskData.forEach(function(task) {
+      var $datatableRowEl = createElement(task);
+      var $availableBoardsOptionElements = prepareBoardOrListSelectOptions(boards);
 
-.datatable__row:last-of-type {
-  border-bottom: 1px solid #ccc;
-  border-bottom-left-radius: 4px;
-  border-bottom-right-radius: 4px; }
+      $datatableRowEl.find('[data-board-name-select]')
+        .append($availableBoardsOptionElements);
 
-.datatable__row input,
-.datatable__row textarea {
-  display: none; }
+      $datatableRowEl
+        .appendTo($tasksContainer);
+    });
+  }
 
-.datatable__row .datatable__button--editing {
-  display: none; }
+  function getAllTasks() {
+    const requestUrl = apiRoot + 'getTasks';
 
-.datatable__row--editing input,
-.datatable__row--editing textarea {
-  display: block; }
+    $.ajax({
+      url: requestUrl,
+      method: 'GET',
+      contentType: "application/json",
+      success: function(tasks) {
+        tasks.forEach(task => {
+          availableTasks[task.id] = task;
+        });
 
-.datatable__row--editing .datatable__field-value {
-  display: none; }
+        getAllAvailableBoards(handleDatatableRender, tasks);
+      }
+    });
+  }
 
-.datatable__row--editing .datatable__button {
-  display: none; }
+  function handleTaskUpdateRequest() {
+    var parentEl = $(this).parents('[data-task-id]');
+    var taskId = parentEl.attr('data-task-id');
+    var taskTitle = parentEl.find('[data-task-name-input]').val();
+    var taskContent = parentEl.find('[data-task-content-input]').val();
+    var requestUrl = apiRoot + 'updateTask';
 
-.datatable__row--editing .datatable__button--editing,
-.datatable__row--editing .datatable__button--card-creation {
-  display: block; }
+    $.ajax({
+      url: requestUrl,
+      method: "PUT",
+      processData: false,
+      contentType: "application/json; charset=utf-8",
+      dataType: 'json',
+      data: JSON.stringify({
+        id: taskId,
+        title: taskTitle,
+        content: taskContent
+      }),
+      success: function(data) {
+        parentEl.attr('data-task-id', data.id).toggleClass('datatable__row--editing');
+        parentEl.find('[data-task-name-paragraph]').text(taskTitle);
+        parentEl.find('[data-task-content-paragraph]').text(taskContent);
+      }
+    });
+  }
 
-.datatable__row--add input,
-.datatable__row--add textarea {
-  display: block; }
+  function handleTaskDeleteRequest() {
+    var parentEl = $(this).parents('[data-task-id]');
+    var taskId = parentEl.attr('data-task-id');
+    var requestUrl = apiRoot + 'deleteTask';
 
-.datatable__field-value {
-  margin-bottom: 0;
-  font-size: 14px; }
+    $.ajax({
+      url: requestUrl + '/?' + $.param({
+        taskId: taskId
+      }),
+      method: 'DELETE',
+      success: function() {
+        parentEl.slideUp(400, function() { parentEl.remove(); });
+      }
+    })
+  }
 
-.datatable__row-section {
-  border: none;
-  margin: 0;
-  padding: 10px;
-  flex-grow: 1; }
+  function handleTaskSubmitRequest(event) {
+    event.preventDefault();
 
-.datatable__row-section--button-section,
-.datatable__row-section--trello-section {
-  margin-left: auto;
-  align-self: center;
-  flex-shrink: 1;
-  flex-grow: 0;
-  display: flex;
-  flex-flow: column nowrap;
-  justify-content: space-around;
-  align-items: center; }
+    var taskTitle = $(this).find('[name="title"]').val();
+    var taskContent = $(this).find('[name="content"]').val();
 
-.datatable__input-label {
-  display: block;
-  text-align: left;
-  font-size: 14px;
-  margin: 5px auto;
-  font-weight: 500;
-  letter-spacing: 0.6px; }
+    var requestUrl = apiRoot + 'createTask';
 
-.datatable__button {
-  color: #fff;
-  background-color: #28a745;
-  display: block;
-  margin-bottom: 5px;
-  font-weight: 400;
-  text-align: center;
-  white-space: nowrap;
-  vertical-align: middle;
-  user-select: none;
-  border: 1px solid transparent;
-  padding: 8px 12px;
-  font-size: 12px;
-  min-width: 120px;
-  line-height: 1.25;
-  border-radius: 4px; }
+    $.ajax({
+      url: requestUrl,
+      method: 'POST',
+      processData: false,
+      contentType: "application/json; charset=utf-8",
+      dataType: 'json',
+      data: JSON.stringify({
+        title: taskTitle,
+        content: taskContent
+      }),
+      success: getAllTasks
+    });
+  }
 
-.datatable__select {
-  display: block;
-  margin-bottom: 10px; }
+  function toggleEditingState() {
+    var parentEl = $(this).parents('[data-task-id]');
+    parentEl.toggleClass('datatable__row--editing');
 
-.datatable__tasks-container:empty {
-  position: relative; }
+    var taskTitle = parentEl.find('[data-task-name-paragraph]').text();
+    var taskContent = parentEl.find('[data-task-content-paragraph]').text();
 
-.datatable__tasks-container:empty::after {
-  content: 'Currently, there are no tasks available.'; }
+    parentEl.find('[data-task-name-input]').val(taskTitle);
+    parentEl.find('[data-task-content-input]').val(taskContent);
+  }
 
-.template {
-  display: none; }
+  function handleBoardNameSelect(event) {
+    var $changedSelectEl = $(event.target);
+    var selectedBoardId = $changedSelectEl.val();
+    var $listNameSelectEl = $changedSelectEl.siblings('[data-list-name-select]');
+    var preparedListOptions = prepareBoardOrListSelectOptions(availableBoards[selectedBoardId].lists);
+
+    $listNameSelectEl.empty().append(preparedListOptions);
+  }
+
+  function handleCardCreationRequest(event) {
+    var requestUrl = trelloApiRoot + 'createTrelloCard';
+    var $relatedTaskRow = $(event.target).parents('[data-task-id]');
+    var relatedTaskId = $relatedTaskRow.attr('data-task-id');
+    var relatedTask = availableTasks[relatedTaskId];
+    var selectedListId = $relatedTaskRow.find('[data-list-name-select]').val();
+
+    if (!selectedListId) {
+      alert('You have to select a board and a list first!');
+      return;
+    }
+
+    $.ajax({
+      url: requestUrl,
+      method: 'POST',
+      processData: false,
+      contentType: "application/json; charset=utf-8",
+      dataType: 'json',
+      data: JSON.stringify({
+        name: relatedTask.title,
+        description: relatedTask.content,
+        listId: selectedListId
+      }),
+      success: function(data) {
+        console.log('Card created - ' + data.shortUrl);
+        alert('Card created - ' + data.shortUrl);
+      }
+    });
+  }
+
+  $('[data-task-add-form]').on('submit', handleTaskSubmitRequest);
+
+  $tasksContainer.on('change','[data-board-name-select]', handleBoardNameSelect);
+  $tasksContainer.on('click','[data-trello-card-creation-trigger]', handleCardCreationRequest);
+  $tasksContainer.on('click','[data-task-edit-button]', toggleEditingState);
+  $tasksContainer.on('click','[data-task-edit-abort-button]', toggleEditingState);
+  $tasksContainer.on('click','[data-task-submit-update-button]', handleTaskUpdateRequest);
+  $tasksContainer.on('click','[data-task-delete-button]', handleTaskDeleteRequest);
+});
