@@ -1,125 +1,158 @@
-$(document).ready(function() {
+html {
+  font-family: 'Roboto', sans-serif;
+  box-sizing: border-box;
+  font-size: 16px;
+  font-weight: normal;
+  margin: 0;
+  padding: 0; }
 
-  var apiRoot = 'https://desolate-river-77139.herokuapp.com/v1/task/';
-  var datatableRowTemplate = $('[data-datatable-row-template]').children()[0];
-  var tasksContainer = $('[data-tasks-container]');
+input,
+textarea {
+  width: 100%;
+  padding: 5px;
+  margin: 0;
+  border-radius: 2px;
+  border: 1px solid #ccc; }
 
-  // init
-  getAllTasks();
+body {
+  margin: 0;
+  padding: 0; }
 
-  function createElement(data) {
-    var element = $(datatableRowTemplate).clone();
+*,
+*::before,
+*::after {
+  box-sizing: inherit; }
 
-    element.attr('data-task-id', data.id);
-    element.find('[data-task-name-section] [data-task-name-paragraph]').text(data.title);
-    element.find('[data-task-name-section] [data-task-name-input]').val(data.title);
+.crud {
+  margin-bottom: 20px; }
 
-    element.find('[data-task-content-section] [data-task-content-paragraph]').text(data.content);
-    element.find('[data-task-content-section] [data-task-content-input]').val(data.content);
+.container {
+  padding-right: 15px;
+  padding-left: 15px;
+  margin-right: auto;
+  margin-left: auto; }
 
-    return element;
-  }
+@media (min-width: 768px) {
+  .container {
+    width: 750px; } }
 
-  function handleDatatableRender(data) {
-    tasksContainer.empty();
-    data.forEach(function(task) {
-      createElement(task).appendTo(tasksContainer);
-    });
-  }
+@media (min-width: 992px) {
+  .container {
+    width: 970px; } }
 
-  function getAllTasks() {
-    var requestUrl = apiRoot + 'getTasks';
+@media (min-width: 1200px) {
+  .container {
+    width: 1170px; } }
 
-    $.ajax({
-      url: requestUrl,
-      method: 'GET',
-      success: handleDatatableRender
-    });
-  }
+.kodilla-heading--main {
+  margin: 20px auto;
+  text-align: center;
+  font-size: 30px;
+  font-weight: 400; }
 
-  function handleTaskUpdateRequest() {
-    var parentEl = $(this).parent().parent();
-    var taskId = parentEl.attr('data-task-id');
-    var taskTitle = parentEl.find('[data-task-name-input]').val();
-    var taskContent = parentEl.find('[data-task-content-input]').val();
-    var requestUrl = apiRoot + 'updateTask';
+.datatable__row {
+  display: flex;
+  flex-flow: row nowrap;
+  justify-content: flex-start;
+  align-items: stretch;
+  border: 1px solid #ccc;
+  border-bottom: none;
+  margin: 0; }
 
-    $.ajax({
-      url: requestUrl,
-      method: "PUT",
-      processData: false,
-      contentType: "application/json; charset=utf-8",
-      dataType: 'json',
-      data: JSON.stringify({
-        id: taskId,
-        title: taskTitle,
-        content: taskContent
-      }),
-      success: function(data) {
-        parentEl.attr('data-task-id', data.id).toggleClass('datatable__row--editing');
-        parentEl.find('[data-task-name-paragraph]').text(taskTitle);
-        parentEl.find('[data-task-content-paragraph]').text(taskContent);
-      }
-    });
-  }
+.datatable__row-section-wrapper {
+  display: flex;
+  flex-grow: 1;
+  justify-content: space-around; }
 
-  function handleTaskDeleteRequest() {
-    var parentEl = $(this).parent().parent();
-    var taskId = parentEl.attr('data-task-id');
-    var requestUrl = apiRoot + 'deleteTask';
+.datatable__row:first-of-type {
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px; }
 
-    $.ajax({
-      url: requestUrl + '/?' + $.param({
-        id: taskId
-      }),
-      method: 'DELETE',
-      success: function() {
-        parentEl.slideUp(400, function() { parentEl.remove(); });
-      }
-    })
-  }
+.datatable__row:last-of-type {
+  border-bottom: 1px solid #ccc;
+  border-bottom-left-radius: 4px;
+  border-bottom-right-radius: 4px; }
 
-  function handleTaskSubmitRequest(event) {
-    event.preventDefault();
+.datatable__row input,
+.datatable__row textarea {
+  display: none; }
 
-    var taskTitle = $(this).find('[name="title"]').val();
-    var taskContent = $(this).find('[name="content"]').val();
+.datatable__row .datatable__button--editing {
+  display: none; }
 
-    var requestUrl = apiRoot + 'createTask';
+.datatable__row--editing input,
+.datatable__row--editing textarea {
+  display: block; }
 
-    $.ajax({
-      url: requestUrl,
-      method: 'POST',
-      processData: false,
-      contentType: "application/json; charset=utf-8",
-      dataType: 'json',
-      data: JSON.stringify({
-        title: taskTitle,
-        content: taskContent
-      }),
-      complete: function(data) {
-        if(data.status === 200) {
-          getAllTasks();
-        }
-      }
-    });
-  }
+.datatable__row--editing .datatable__field-value {
+  display: none; }
 
-  function toggleEditingState() {
-    var parentEl = $(this).parent().parent();
-    parentEl.toggleClass('datatable__row--editing');
+.datatable__row--editing .datatable__button {
+  display: none; }
 
-    var taskTitle = parentEl.find('[data-task-name-paragraph]').text();
-    var taskContent = parentEl.find('[data-task-content-paragraph]').text();
+.datatable__row--editing .datatable__button--editing,
+.datatable__row--editing .datatable__button--card-creation {
+  display: block; }
 
-    parentEl.find('[data-task-name-input]').val(taskTitle);
-    parentEl.find('[data-task-content-input]').val(taskContent);
-  }
+.datatable__row--add input,
+.datatable__row--add textarea {
+  display: block; }
 
-  $('[data-task-add-form]').on('submit', handleTaskSubmitRequest);
+.datatable__field-value {
+  margin-bottom: 0;
+  font-size: 14px; }
 
-  tasksContainer.on('click','[data-task-edit-button]', toggleEditingState);
-  tasksContainer.on('click','[data-task-edit-abort-button]', toggleEditingState);
-  tasksContainer.on('click','[data-task-submit-update-button]', handleTaskUpdateRequest);
-  tasksContainer.on('click','[data-task-delete-button]', handleTaskDeleteRequest);
-});
+.datatable__row-section {
+  border: none;
+  margin: 0;
+  padding: 10px;
+  flex-grow: 1; }
+
+.datatable__row-section--button-section,
+.datatable__row-section--trello-section {
+  margin-left: auto;
+  align-self: center;
+  flex-shrink: 1;
+  flex-grow: 0;
+  display: flex;
+  flex-flow: column nowrap;
+  justify-content: space-around;
+  align-items: center; }
+
+.datatable__input-label {
+  display: block;
+  text-align: left;
+  font-size: 14px;
+  margin: 5px auto;
+  font-weight: 500;
+  letter-spacing: 0.6px; }
+
+.datatable__button {
+  color: #fff;
+  background-color: #28a745;
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 400;
+  text-align: center;
+  white-space: nowrap;
+  vertical-align: middle;
+  user-select: none;
+  border: 1px solid transparent;
+  padding: 8px 12px;
+  font-size: 12px;
+  min-width: 120px;
+  line-height: 1.25;
+  border-radius: 4px; }
+
+.datatable__select {
+  display: block;
+  margin-bottom: 10px; }
+
+.datatable__tasks-container:empty {
+  position: relative; }
+
+.datatable__tasks-container:empty::after {
+  content: 'Currently, there are no tasks available.'; }
+
+.template {
+  display: none; }
